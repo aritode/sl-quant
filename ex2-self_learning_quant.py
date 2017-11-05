@@ -7,8 +7,13 @@ np.set_printoptions(precision=5, suppress=True, linewidth=150)
 import pandas as pd
 import backtest as twp
 from matplotlib import pyplot as plt
-
 from sklearn import metrics, preprocessing
+from keras.models import Sequential
+from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizers import RMSprop
+import random, timeit
+
+
 
 '''
 Name:        The Self Learning Quant, Example 2
@@ -127,10 +132,6 @@ def evaluate_Q(eval_data, eval_model):
 #This neural network is the the Q-function, run it like this:
 #model.predict(state.reshape(1,64), batch_size=1)
 
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import RMSprop
-
 model = Sequential()
 model.add(Dense(4, init='lecun_uniform', input_shape=(2,)))
 model.add(Activation('relu'))
@@ -147,7 +148,6 @@ rms = RMSprop()
 model.compile(loss='mse', optimizer=rms)
 
 
-import random, timeit
 
 start_time = timeit.default_timer()
 
@@ -210,7 +210,7 @@ print(bt.data)
 plt.figure()
 bt.plotTrades()
 plt.suptitle('epoch' + str(i))
-plt.savefig('plt/final_trades'+'.png', bbox_inches='tight', pad_inches=1, dpi=72) #assumes there is a ./plt dir
+plt.savefig('final_trades_ex2'+'.png', bbox_inches='tight', pad_inches=1, dpi=72) #assumes there is a ./plt dir
 plt.close('all')
 
 plt.figure()
