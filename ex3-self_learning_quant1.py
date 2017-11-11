@@ -295,8 +295,7 @@ if __name__ == "__main__":
             #Take action, observe new state S'
             new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
             #Observe reward
-            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=False,
-                                     epoch=epochs)
+            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epochs)
 
             #Experience replay storage
             if (len(replay) < buffer): #if buffer not filled, add to it
