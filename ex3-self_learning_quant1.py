@@ -282,7 +282,7 @@ if __name__ == "__main__":
                 preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
                 xdata.reshape(7, -1))
             if (random.random() < epsilon): #choose random action
-                action = np.random.randint(0,7) #assumes 4 different actions
+                action = np.random.randint(0,3) #assumes 4 different actions
             else: #choose best action from Q(s,a) values
                 action = (np.argmax(qval))
             #Take action, observe new state S'
