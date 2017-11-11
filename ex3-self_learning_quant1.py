@@ -174,7 +174,7 @@ def evaluate_Q(eval_data, eval_model, price_data, epoch=0):
     return eval_reward
 
 
-def value_iter(eval_data, epsilon, epoch=0):
+def value_iter(eval_data, reward, epsilon, epoch=0):
     signal = pd.Series(index=np.arange(len(eval_data)))
     state, xdata, price_data = init_state(eval_data)
     print(state.shape)
@@ -184,7 +184,10 @@ def value_iter(eval_data, epsilon, epoch=0):
     while (status == 1):
         # We start in state S
         # Run the Q function on S to get predicted reward values on all the possible actions
-        qval = np.dot(preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),xdata.reshape(7, -1))
+        #qval = np.dot(preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),xdata.reshape(7, -1))
+        qval = np.dot(
+            preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
+            reward)
         action = (np.argmax(qval))
         new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
         # Observe reward
@@ -273,14 +276,18 @@ if __name__ == "__main__":
         status = 1
         terminal_state = 0
         time_step = 5
+        reward = get_reward(state, time_step, 0, price_data, signal, terminal_state)
         #while game still in progress
         while(status == 1):
             #We are in state S
             #Let's run our Q function on S to get Q values for all possible actions
             print('epoch ' + str(i))
+            #qval = np.dot(
+            #    preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
+            #    xdata.reshape(7, -1))
             qval = np.dot(
                 preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
-                xdata.reshape(7, -1))
+                reward)
             if (random.random() < epsilon): #choose random action
                 action = np.random.randint(0,3) #assumes 4 different actions
             else: #choose best action from Q(s,a) values
@@ -288,7 +295,7 @@ if __name__ == "__main__":
             #Take action, observe new state S'
             new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
             #Observe reward
-            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True,
+            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=False,
                                      epoch=epochs)
 
             #Experience replay storage
@@ -310,8 +317,10 @@ if __name__ == "__main__":
                     old_state, action, reward, new_state = memory
                     old_qval = model.predict(old_state, batch_size=batch_size)
                     newQ = np.dot(
-                preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
-                xdata.reshape(7, -1))
+                #preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
+                #xdata.reshape(7, -1))
+                        preprocessing.normalize(state.reshape(state.shape[0], -1), norm='l2', axis=0).reshape(state.shape),
+                        reward)
                     maxQ = np.max(newQ)
                     y = np.zeros((1,7))
                     y[:] = old_qval[:]
@@ -319,10 +328,7 @@ if __name__ == "__main__":
                         update = (reward + (gamma * maxQ))
                     else: #terminal state
                         update = reward
-                    try:
-                        y[0][action] = update
-                    except:
-                        pass
+                    y[0][action] = update
                     #print(time_step, reward, terminal_state)
                     X_train.append(old_state)
                     y_train.append(y.reshape(7,))
@@ -337,7 +343,7 @@ if __name__ == "__main__":
                 status = 0
 
         #eval_reward = evaluate_Q(test_data, model, price_data, i)
-        eval_reward = value_iter(test_data, epsilon, epochs)
+        eval_reward = value_iter(test_data, reward, epsilon, epochs)
         learning_progress.append((eval_reward))
         print("Epoch #: %s Reward: %f Epsilon: %f" % (i,eval_reward, epsilon))
         #learning_progress.append((reward))
@@ -352,7 +358,7 @@ if __name__ == "__main__":
     bt.data['delta'] = bt.data['shares'].diff().fillna(0)
 
     print(bt.data)
-    unique, counts = np.unique(filter(lambda v: v==v, signal.values), return_counts=True)
+    unique, counts = np.unique(filter(lambda v:v==v,signal.values), return_counts=True)
     print(np.asarray((unique, counts)).T)
 
     plt.figure()
