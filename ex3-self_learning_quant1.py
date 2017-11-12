@@ -100,7 +100,6 @@ def take_action(state, xdata, action, signal, time_step):
     
     #make necessary adjustments to state and then return it
     time_step += 1
-    
     #if the current iteration is the last state ("terminal state") then set terminal_state to 1
     if time_step + 1 == xdata.shape[0]:
         state = xdata[time_step-1:time_step, 0:1, :]
@@ -121,11 +120,10 @@ def take_action(state, xdata, action, signal, time_step):
     #print(state)
     terminal_state = 0
     #print(signal)
-
     return state, time_step, signal, terminal_state
 
 #Get Reward, the reward is returned at the end of an episode
-def get_reward(new_state, time_step, action, xdata, signal, terminal_state, eval=False, epoch=0):
+def get_reward(new_state, time_step, action, xdata, signal, terminal_state, epoch, eval=False):
     reward = 0
     signal.fillna(value=0, inplace=True)
 
@@ -138,6 +136,7 @@ def get_reward(new_state, time_step, action, xdata, signal, terminal_state, eval
         #save a figure of the test set
         bt = twp.Backtest(pd.Series(data=[x for x in xdata], index=signal.index.values), signal, signalType='shares')
         reward = bt.pnl.iloc[-1]
+        print('reward', reward)
 
         plt.figure(figsize=(3,4))
         bt.plotTrades()
@@ -148,7 +147,7 @@ def get_reward(new_state, time_step, action, xdata, signal, terminal_state, eval
         plt.savefig('plt/'+str(epoch)+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
         plt.close('all')
 
-    #print(time_step, terminal_state, eval, reward)
+    print(time_step, terminal_state, eval, reward)
 
     return reward
 
@@ -180,7 +179,7 @@ def value_iter(eval_data, reward, epsilon, epoch=0):
     print(state.shape)
     status = 1
     terminal_state = 0
-    time_step = 1
+    time_step = 14
     while (status == 1):
         # We start in state S
         # Run the Q function on S to get predicted reward values on all the possible actions
@@ -275,8 +274,8 @@ if __name__ == "__main__":
             state, xdata, price_data = init_state(indata)
         status = 1
         terminal_state = 0
-        time_step = 5
-        reward = get_reward(state, time_step, 0, price_data, signal, terminal_state)
+        time_step = 14
+        reward = get_reward(state, time_step, 0, price_data, signal, terminal_state, i)
         #while game still in progress
         while(status == 1):
             #We are in state S
@@ -295,7 +294,7 @@ if __name__ == "__main__":
             #Take action, observe new state S'
             new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
             #Observe reward
-            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epochs)
+            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=i)
 
             #Experience replay storage
             if (len(replay) < buffer): #if buffer not filled, add to it
@@ -342,7 +341,7 @@ if __name__ == "__main__":
                 status = 0
 
         #eval_reward = evaluate_Q(test_data, model, price_data, i)
-        eval_reward = value_iter(test_data, reward, epsilon, epochs)
+        eval_reward = value_iter(test_data, reward, epsilon, epoch=epochs)
         learning_progress.append((eval_reward))
         print("Epoch #: %s Reward: %f Epsilon: %f" % (i,eval_reward, epsilon))
         #learning_progress.append((reward))
