@@ -144,7 +144,7 @@ def get_reward(new_state, time_step, action, xdata, signal, terminal_state, epoc
         plt.text(250, 400, 'training data')
         plt.text(450, 400, 'test data')
         plt.suptitle(str(epoch))
-        plt.savefig('plt/'+str(epoch)+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
+        plt.savefig('plt/'+'value_iter_'+str(epoch)+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
         plt.close('all')
 
     print(time_step, terminal_state, eval, reward)
@@ -367,7 +367,7 @@ if __name__ == "__main__":
     plt.subplot(3,1,3)
     plt.plot(learning_progress)
 
-    plt.savefig('plt/summary'+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
+    plt.savefig('plt/value_iter_summary'+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
     #plt.show()
 
 
