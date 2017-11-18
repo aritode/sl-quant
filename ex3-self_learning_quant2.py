@@ -46,7 +46,7 @@ backtest.py from the TWP library. Download backtest.py and put in the same folde
 def read_convert_data(symbol='XBTEUR'):
     if symbol == 'XBTEUR':
         prices = quandl.get("BCHARTS/KRAKENEUR")
-        prices.to_pickle('XBTEUR_1day.pkl') # a /data folder must exist
+        prices.to_pickle('XBTEUR_1day.pkl')
     if symbol == 'EURUSD_1day':
         #prices = Quandl.get("ECB/EURUSD")
         prices = pd.read_csv('EURUSD_1day.csv',sep=",", skiprows=0, header=0, index_col=0, parse_dates=True, names=['ticker', 'date', 'time', 'open', 'low', 'high', 'close'])
@@ -123,30 +123,29 @@ def take_action(state, xdata, action, signal, time_step):
     return state, time_step, signal, terminal_state
 
 #Get Reward, the reward is returned at the end of an episode
-def get_reward(new_state, time_step, action, xdata, signal, terminal_state, epoch, eval=False):
+def get_reward_policy_iter(new_state, time_step, action, xdata, signal, terminal_state, epoch, eval=False):
     reward = 0
     signal.fillna(value=0, inplace=True)
 
     if eval == False:
-        bt = twp.Backtest(pd.Series(data=[x for x in xdata[time_step-2:time_step]], index=signal[time_step-2:time_step].index.values), signal[time_step-2:time_step], signalType='shares')
-        reward = ((bt.data['price'].iloc[-1] - bt.data['price'].iloc[-2])*bt.data['shares'].iloc[-1])
-
+        bt = twp.Backtest(pd.Series(data=[x for x in xdata[time_step - 2:time_step]],
+                                    index=signal[time_step - 2:time_step].index.values),
+                          signal[time_step - 2:time_step], signalType='shares')
+        reward = ((bt.data['price'].iloc[-1] - bt.data['price'].iloc[-2]) * bt.data['shares'].iloc[-1])
 
     if terminal_state == 1 and eval == True:
-        #save a figure of the test set
+        # save a figure of the test set
         bt = twp.Backtest(pd.Series(data=[x for x in xdata], index=signal.index.values), signal, signalType='shares')
         reward = bt.pnl.iloc[-1]
-        print('reward', reward)
-
-        plt.figure(figsize=(3,4))
+        plt.figure(figsize=(3, 4))
         bt.plotTrades()
         plt.axvline(x=400, color='black', linestyle='--')
         plt.text(250, 400, 'training data')
         plt.text(450, 400, 'test data')
         plt.suptitle(str(epoch))
-        plt.savefig('plt/'+'value_iter_'+str(epoch)+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
+        plt.savefig('plt/' + 'policy_iter_'+str(epoch) + '.png', bbox_inches='tight', pad_inches=1, dpi=72)
         plt.close('all')
-
+        # print(time_step, terminal_state, eval, reward)
     print(time_step, terminal_state, eval, reward)
 
     return reward
@@ -165,7 +164,7 @@ def evaluate_Q(eval_data, eval_model, price_data, epoch=0):
         #Take action, observe new state S'
         new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
         #Observe reward
-        eval_reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epoch)
+        eval_reward = get_reward_policy_iter(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epoch)
         state = new_state
         if terminal_state == 1: #terminal state
             status = 0
@@ -173,7 +172,7 @@ def evaluate_Q(eval_data, eval_model, price_data, epoch=0):
     return eval_reward
 
 
-def value_iter(eval_data, reward, epsilon, epoch=0):
+def policy_iter(eval_data, reward, epsilon, epoch=0):
     signal = pd.Series(index=np.arange(len(eval_data)))
     state, xdata, price_data = init_state(eval_data)
     print(state.shape)
@@ -190,17 +189,13 @@ def value_iter(eval_data, reward, epsilon, epoch=0):
         action = (np.argmax(qval))
         new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
         # Observe reward
-        eval_reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epoch)
+        eval_reward = get_reward_policy_iter(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epoch)
         # Take action, observe new state S'
         state = new_state
         if terminal_state == 1:  # terminal state
             status = 0
 
     return eval_reward
-
-
-def policy_iter():
-    pass
 
 
 
@@ -275,7 +270,8 @@ if __name__ == "__main__":
         status = 1
         terminal_state = 0
         time_step = 14
-        reward = get_reward(state, time_step, 0, price_data, signal, terminal_state, i)
+        reward = get_reward_policy_iter(state, time_step, 0, price_data, signal, terminal_state, i)
+        print(reward)
         #while game still in progress
         while(status == 1):
             #We are in state S
@@ -294,8 +290,7 @@ if __name__ == "__main__":
             #Take action, observe new state S'
             new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
             #Observe reward
-            reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=i)
-
+            reward = get_reward_policy_iter(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=i)
             #Experience replay storage
             if (len(replay) < buffer): #if buffer not filled, add to it
                 replay.append((state, action, reward, new_state))
@@ -341,7 +336,7 @@ if __name__ == "__main__":
                 status = 0
 
         #eval_reward = evaluate_Q(test_data, model, price_data, i)
-        eval_reward = value_iter(test_data, reward, epsilon, epoch=epochs)
+        eval_reward = policy_iter(test_data, reward, epsilon, epoch=epochs)
         learning_progress.append((eval_reward))
         print("Epoch #: %s Reward: %f Epsilon: %f" % (i,eval_reward, epsilon))
         #learning_progress.append((reward))
@@ -367,7 +362,7 @@ if __name__ == "__main__":
     plt.subplot(3,1,3)
     plt.plot(learning_progress)
 
-    plt.savefig('plt/value_iter_summary'+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
+    plt.savefig('plt/policy_iter_summary'+'.png', bbox_inches='tight', pad_inches=1, dpi=72)
     #plt.show()
 
 
