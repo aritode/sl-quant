@@ -109,6 +109,8 @@ def init_state(indata, test=False):
     state = xdata[0:1, 0:1, :]
 
     return state, xdata, close
+
+
 '''
 #Take Action
 def take_action(state, xdata, action, signal, time_step):
