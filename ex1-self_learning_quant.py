@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import numpy as np
 np.random.seed(1335)  # for reproducibility
 np.set_printoptions(precision=5, suppress=True, linewidth=150)
@@ -34,12 +33,12 @@ def load_data(test=False):
     all = pd.DataFrame()
     for f in os.listdir(datapath):
         filepath = os.path.join(datapath, f)
-        if filepath.endswith('.csv'):
+        if filepath.endswith('A.csv'):
             #print(filepath)
             Res = pd.read_csv(filepath, sep=",", skiprows=0, header=0, index_col=0, parse_dates=True,
                                  names=['date', 'open', 'high', 'low', 'close', 'adj close', 'volume'])
             all = all.append(Res)
-    x_train = all.iloc[-2000:-300, ]
+    x_train = all.iloc[:-2000, ]
     x_test = all.iloc[-2000:, ]
     if test:
         return x_test
@@ -47,6 +46,7 @@ def load_data(test=False):
         return x_train
 
     return all
+
 
 #Initialize first state, all items are placed deterministically
 def init_state(data, test=False):
@@ -103,6 +103,7 @@ def take_action(state, xdata, action, signal, time_step):
 
     return state, time_step, signal, terminal_state
 
+
 #Get Reward, the reward is returned at the end of an episode
 def get_reward(new_state, time_step, action, xdata, signal, terminal_state, eval=False, epoch=0):
     reward = 0
@@ -128,8 +129,9 @@ def get_reward(new_state, time_step, action, xdata, signal, terminal_state, eval
 
     return reward
 
-def evaluate_Q(eval_data, eval_model):
-    #This function is used to evaluate the perofrmance of the system each epoch, without the influence of epsilon and random actions
+
+def evaluate_Q(eval_data, eval_model, price_data, epoch=0):
+    #This function is used to evaluate the performance of the system each epoch, without the influence of epsilon and random actions
     signal = pd.Series(index=np.arange(len(eval_data)))
     state, xdata, price_data = init_state(eval_data)
     status = 1
@@ -138,16 +140,18 @@ def evaluate_Q(eval_data, eval_model):
     while(status == 1):
         #We start in state S
         #Run the Q function on S to get predicted reward values on all the possible actions
-        qval = eval_model.predict(state.reshape(1,2), batch_size=1)
+        qval = eval_model.predict(state, batch_size=1)
         action = (np.argmax(qval))
         #Take action, observe new state S'
         new_state, time_step, signal, terminal_state = take_action(state, xdata, action, signal, time_step)
         #Observe reward
-        eval_reward = get_reward(new_state, time_step, action, xdata, signal, terminal_state, i)
+        eval_reward = get_reward(new_state, time_step, action, price_data, signal, terminal_state, eval=True, epoch=epoch)
         state = new_state
         if terminal_state == 1: #terminal state
             status = 0
+
     return eval_reward
+
 
 
 
@@ -178,8 +182,6 @@ if __name__ == "__main__":
     adam = Adam()
     model.compile(loss='mse', optimizer=adam)
 
-    import random, timeit
-
     start_time = timeit.default_timer()
 
     indata = load_data()
@@ -195,6 +197,7 @@ if __name__ == "__main__":
     h = 0
     # signal = pd.Series(index=market_data.index)
     signal = pd.Series(index=np.arange(len(indata)))
+    print('start now')
     for i in range(epochs):
         if i == epochs - 1:  # the last epoch, use test data set
             indata = load_data(test=True)
@@ -206,10 +209,11 @@ if __name__ == "__main__":
         # time_step = market_data.index[0] + 64 #when using market_data
         time_step = 14
         # while game still in progress
+        print('epochs ' + str(i))
         while (status == 1):
             # We are in state S
             # Let's run our Q function on S to get Q values for all possible actions
-            qval = model.predict(state, batch_size=1)
+            qval = model.predict(state, batch_size=batchSize)
             if (random.random() < epsilon):  # choose random action
                 action = np.random.randint(0, 4)  # assumes 4 different actions
             else:  # choose best action from Q(s,a) values
@@ -236,8 +240,8 @@ if __name__ == "__main__":
                 for memory in minibatch:
                     # Get max_Q(S',a)
                     old_state, action, reward, new_state = memory
-                    old_qval = model.predict(old_state, batch_size=1)
-                    newQ = model.predict(new_state, batch_size=1)
+                    old_qval = model.predict(old_state, batch_size=batchSize)
+                    newQ = model.predict(new_state, batch_size=batchSize)
                     maxQ = np.max(newQ)
                     y = np.zeros((1, 4))
                     y[:] = old_qval[:]
@@ -282,7 +286,7 @@ if __name__ == "__main__":
     plt.subplot(3, 1, 3)
     plt.plot(learning_progress)
 
-    plt.savefig('plt/summary' + '.png', bbox_inches='tight', pad_inches=1, dpi=72)
+    plt.savefig('summary' + '.png', bbox_inches='tight', pad_inches=1, dpi=72)
     # plt.show()
 
 
